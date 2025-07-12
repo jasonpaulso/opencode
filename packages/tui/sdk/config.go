@@ -55,6 +55,8 @@ type Config struct {
 	Autoshare bool `json:"autoshare"`
 	// Automatically update to the latest version
 	Autoupdate bool `json:"autoupdate"`
+	// User-defined custom commands
+	Commands map[string]ConfigCommand `json:"commands"`
 	// Disable providers that are loaded automatically
 	DisabledProviders []string           `json:"disabled_providers"`
 	Experimental      ConfigExperimental `json:"experimental"`
@@ -81,6 +83,7 @@ type configJSON struct {
 	Schema            apijson.Field
 	Autoshare         apijson.Field
 	Autoupdate        apijson.Field
+	Commands          apijson.Field
 	DisabledProviders apijson.Field
 	Experimental      apijson.Field
 	Instructions      apijson.Field
@@ -100,6 +103,33 @@ func (r *Config) UnmarshalJSON(data []byte) (err error) {
 }
 
 func (r configJSON) RawJSON() string {
+	return r.raw
+}
+
+type ConfigCommand struct {
+	// Description of the command
+	Description string `json:"description,required"`
+	// Keybinding for the command
+	Keybind string `json:"keybind"`
+	// Text triggers for the command
+	Trigger []string `json:"trigger"`
+	JSON    configCommandJSON `json:"-"`
+}
+
+// configCommandJSON contains the JSON metadata for the struct [ConfigCommand]
+type configCommandJSON struct {
+	Description apijson.Field
+	Keybind     apijson.Field
+	Trigger     apijson.Field
+	raw         string
+	ExtraFields map[string]apijson.Field
+}
+
+func (r *ConfigCommand) UnmarshalJSON(data []byte) (err error) {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func (r configCommandJSON) RawJSON() string {
 	return r.raw
 }
 

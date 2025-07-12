@@ -133,6 +133,7 @@ func parseBindings(bindings ...string) []Keybinding {
 	var parsedBindings []Keybinding
 	for _, binding := range bindings {
 		for p := range strings.SplitSeq(binding, ",") {
+			p = strings.TrimSpace(p)
 			requireLeader := strings.HasPrefix(p, "<leader>")
 			keybinding := strings.ReplaceAll(p, "<leader>", "")
 			keybinding = strings.TrimSpace(keybinding)
@@ -327,14 +328,46 @@ func LoadFromConfig(config *opencode.Config) CommandRegistry {
 		},
 	}
 	registry := make(CommandRegistry)
+	
+	// Load default commands
+	for _, command := range defaults {
+		registry[command.Name] = command
+	}
+	
+	// Apply custom keybindings from config
 	keybinds := map[string]string{}
 	marshalled, _ := json.Marshal(config.Keybinds)
 	json.Unmarshal(marshalled, &keybinds)
-	for _, command := range defaults {
-		if keybind, ok := keybinds[string(command.Name)]; ok && keybind != "" {
+	for commandName, keybind := range keybinds {
+		if command, exists := registry[CommandName(commandName)]; exists && keybind != "" {
 			command.Keybindings = parseBindings(keybind)
+			registry[CommandName(commandName)] = command
 		}
-		registry[command.Name] = command
 	}
+	
+	// Load user-defined commands from config
+	if config.Commands != nil {
+		for name, userCommand := range config.Commands {
+			commandName := CommandName("user_" + name)
+			
+			// Parse keybindings
+			var keybindings []Keybinding
+			if userCommand.Keybind != "" {
+				keybindings = parseBindings(userCommand.Keybind)
+			}
+			
+			// Create the user command
+			command := Command{
+				Name:        commandName,
+				Description: userCommand.Description,
+				Keybindings: keybindings,
+				Trigger:     userCommand.Trigger,
+			}
+			
+			// Add to registry (user commands can override defaults if they have the same name)
+			registry[commandName] = command
+		}
+	}
+	
 	return registry
 }
